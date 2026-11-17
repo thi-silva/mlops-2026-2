@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+import os
 
 from src.modules.intent_classifier.controller import router as intent_clf_router
 from src.modules.intent_classifier.service import load_models, clear_models
@@ -25,4 +26,4 @@ app.include_router(intent_clf_router)
 
 @app.get('/')
 def root():
-    return {'status': 'ok'}
+    return {'status': 'ok', 'version': os.getenv('APP_VERSION', 'dev')}

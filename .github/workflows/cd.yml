@@ -1,0 +1,79 @@
+name: CD
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag já publicada no GHCR (ex.: v1.0.0)'
+        required: true
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+  APP_NAME: mlops-api-thiago
+  RESOURCE_GROUP: mlops-api-thiago_group
+
+jobs:
+  ci:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  release:
+    needs: ci
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build e push com a versão
+        run: |
+          IMAGE=ghcr.io/thi-silva/mlops-2026-2
+          docker build -t "$IMAGE:$TAG" .
+          docker push "$IMAGE:$TAG"
+
+  deploy:
+    needs: release
+    if: ${{ !failure() && !cancelled() }}
+    environment: production
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Login no Azure via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Atualizar imagem e versão no App Service
+        run: |
+          IMAGE=ghcr.io/thi-silva/mlops-2026-2
+          az webapp config container set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --docker-custom-image-name "$IMAGE:$TAG"
+          az webapp config appsettings set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --settings APP_VERSION="$TAG"
+
+  verify:
+    needs: deploy
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          URL=${{ vars.APP_URL }}
+          MSG='{"id":"cd-test","nome":"cd","text":"não entendi nada"}'
+          for i in $(seq 90); do
+            if curl -fsS "$URL/" | grep -q "\"$TAG\"" && curl -fsS -X POST "$URL/predictions" -H "Content-Type: application/json" -d "$MSG"; then
+              echo "OK: $TAG no ar"; exit 0
+            fi
+            echo "Aguardando inicialização..."
+            sleep 10
+          done
+          echo "Falhou: $TAG não respondeu. Faça o rollback."; exit 1
