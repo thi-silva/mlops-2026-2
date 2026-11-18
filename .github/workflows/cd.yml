@@ -59,7 +59,7 @@ jobs:
         run: |
           IMAGE=ghcr.io/thi-silva/mlops-2026-2
           az webapp config container set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --docker-custom-image-name "$IMAGE:$TAG"
-          az webapp config appsettings set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --settings APP_VERSION="$TAG" WEBSITES_PORT=8000
+          az webapp config appsettings set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --settings APP_VERSION="$TAG"
 
   verify:
     needs: deploy

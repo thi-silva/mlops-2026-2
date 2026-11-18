@@ -23,6 +23,6 @@ ENV PYTHONPATH=/app/src
 # 5. Mudamos o foco para dentro da pasta src apenas no momento de arrancar
 WORKDIR /app/src
 
-EXPOSE 8000
+EXPOSE 80
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80"]
