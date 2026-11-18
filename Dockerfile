@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY --chown=appuser:appuser src ./src
 
 # 4. Ensinamos o Python a reconhecer a pasta onde estão os "modules"
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app
 
 # 5. Mudamos o foco para dentro da pasta src apenas no momento de arrancar
 WORKDIR /app/src
